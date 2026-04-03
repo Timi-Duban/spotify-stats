@@ -37,16 +37,16 @@ nvm use   # picks up .nvmrc
 cd api
 cp .env.example .env
 # Fill in your Spotify credentials
-npm install
-npm run start:dev
+pnpm install
+pnpm run start:dev
 ```
 
 ### Frontend
 
 ```bash
 cd web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Vite proxies `/api/*` → `http://localhost:3001` in dev, so no `VITE_API_URL` needed locally.
