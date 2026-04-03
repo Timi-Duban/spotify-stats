@@ -3,7 +3,6 @@ import {
   Get,
   Query,
   Res,
-  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -44,7 +43,13 @@ export class AuthController {
       const user = await this.spotifyService.exchangeCode(code);
       return res.redirect(`${frontendUrl}?auth_success=${encodeURIComponent(user.id)}`);
     } catch (err) {
-      console.error('OAuth callback error:', err?.response?.data ?? err.message);
+      const spotifyError = err?.response?.data;
+      console.error('OAuth callback error:', {
+        status: err?.response?.status,
+        error: spotifyError?.error,
+        error_description: spotifyError?.error_description ?? err.message,
+        note: 'User name/email unavailable — token exchange failed before profile could be fetched',
+      });
       return res.redirect(`${frontendUrl}?auth_error=exchange_failed`);
     }
   }
