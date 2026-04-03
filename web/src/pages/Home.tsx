@@ -1,21 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Music2, UserPlus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Music2, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrackList } from '@/components/TrackList';
-import { ArtistList } from '@/components/ArtistList';
-import { AlbumGrid } from '@/components/AlbumGrid';
-import { RecentList } from '@/components/RecentList';
+import { AppHeader } from '@/components/AppHeader';
+import { AuthBanners } from '@/components/AuthBanners';
+import { UserControls } from '@/components/UserControls';
+import { StatsTabs } from '@/components/StatsTabs';
 import {
   getUsers,
   getTopTracks,
@@ -24,7 +15,7 @@ import {
   getRecentlyPlayed,
   deleteUser,
 } from '@/lib/api';
-import { TIME_RANGE_LABELS, type TimeRange } from '@/types/spotify';
+import { type TimeRange } from '@/types/spotify';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -37,7 +28,6 @@ export function Home() {
   const authSuccess = searchParams.get('auth_success');
   const authError = searchParams.get('auth_error');
 
-  // Clear query params from URL without a redirect
   useEffect(() => {
     if (authSuccess || authError) {
       setSearchParams({}, { replace: true });
@@ -49,7 +39,6 @@ export function Home() {
     queryFn: getUsers,
   });
 
-  // Auto-select the newly connected user after OAuth, or the first user on load
   useEffect(() => {
     if (!users?.length) return;
     if (authSuccess) {
@@ -93,39 +82,18 @@ export function Home() {
     enabled: !!selectedUserId,
   });
 
+  const handleDeleteUser = () => {
+    if (selectedUser && confirm(`Remove ${selectedUser.displayName} from this app?`)) {
+      deleteMutation.mutate(selectedUserId);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <img src="/spotify.svg" alt="Spotify" className="h-7 w-7" />
-            <h1 className="text-lg font-bold">Spotify Stats</h1>
-          </div>
-
-          <a
-            href={`${API_URL}/auth/spotify`}
-            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <UserPlus className="h-4 w-4" />
-            Connect account
-          </a>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="container mx-auto px-4 py-8">
-        {/* OAuth feedback banners */}
-        {authSuccess && (
-          <div className="mb-6 flex items-center gap-2 rounded-md border border-green-700 bg-green-900/20 p-4 text-sm text-green-400">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Account connected — now showing your stats.
-          </div>
-        )}
-        {authError && (
-          <div className="mb-6 flex items-center gap-2 rounded-md border border-red-700 bg-red-900/20 p-4 text-sm text-red-400">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            Could not connect account: {decodeURIComponent(authError)}. Please try again.
-          </div>
-        )}
+        <AuthBanners authSuccess={authSuccess} authError={authError} />
 
         {usersLoading ? (
           <div className="mb-8 flex items-center gap-4">
@@ -134,7 +102,6 @@ export function Home() {
             <Skeleton className="h-10 w-40" />
           </div>
         ) : !users?.length ? (
-          // Empty state — no accounts connected yet
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <Music2 className="mb-4 h-12 w-12 text-muted-foreground" />
             <h2 className="mb-2 text-xl font-semibold">No accounts connected yet</h2>
@@ -151,96 +118,31 @@ export function Home() {
           </div>
         ) : (
           <>
-            {/* Controls row */}
-            <div className="mb-8 flex flex-wrap items-center gap-3">
-              {selectedUser && (
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={selectedUser.avatarUrl} />
-                  <AvatarFallback>
-                    {selectedUser.displayName?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              )}
+            <UserControls
+              users={users}
+              selectedUserId={selectedUserId}
+              selectedUser={selectedUser}
+              timeRange={timeRange}
+              onUserChange={setSelectedUserId}
+              onTimeRangeChange={setTimeRange}
+              onDeleteUser={handleDeleteUser}
+            />
 
-              {/* User picker */}
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Period picker */}
-              <Select
-                value={timeRange}
-                onValueChange={(v) => setTimeRange(v as TimeRange)}
-              >
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.entries(TIME_RANGE_LABELS) as [TimeRange, string][]).map(
-                    ([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-
-              {/* Remove current user */}
-              {selectedUser && (
-                <button
-                  onClick={() => {
-                    if (confirm(`Remove ${selectedUser.displayName} from this app?`)) {
-                      deleteMutation.mutate(selectedUserId);
-                    }
-                  }}
-                  className="rounded p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  title="Remove this account"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Stats tabs */}
             {!selectedUserId ? (
               <div className="flex flex-col items-center justify-center py-24">
                 <p className="text-muted-foreground">Select a user to view stats</p>
               </div>
             ) : (
-              <Tabs defaultValue="tracks">
-                <TabsList className="mb-6 flex-wrap">
-                  <TabsTrigger value="tracks">Top Tracks</TabsTrigger>
-                  <TabsTrigger value="artists">Top Artists</TabsTrigger>
-                  <TabsTrigger value="albums">Top Albums</TabsTrigger>
-                  <TabsTrigger value="recent">Recently Played</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="tracks">
-                  <TrackList tracks={topTracks} isLoading={tracksLoading} />
-                </TabsContent>
-
-                <TabsContent value="artists">
-                  <ArtistList artists={topArtists} isLoading={artistsLoading} />
-                </TabsContent>
-
-                <TabsContent value="albums">
-                  <AlbumGrid albums={topAlbums} isLoading={albumsLoading} />
-                </TabsContent>
-
-                <TabsContent value="recent">
-                  <RecentList items={recentTracks} isLoading={recentLoading} />
-                </TabsContent>
-              </Tabs>
+              <StatsTabs
+                topTracks={topTracks}
+                tracksLoading={tracksLoading}
+                topArtists={topArtists}
+                artistsLoading={artistsLoading}
+                topAlbums={topAlbums}
+                albumsLoading={albumsLoading}
+                recentTracks={recentTracks}
+                recentLoading={recentLoading}
+              />
             )}
           </>
         )}
