@@ -53,9 +53,11 @@ export function ArtistList({ artists, isLoading }: ArtistListProps) {
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{artist.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatNumber(artist.followers?.total ?? 0)} followers
-              </p>
+              {!!artist.followers?.total && (
+                <p className="text-xs text-muted-foreground">
+                  {formatNumber(artist.followers.total)} followers
+                </p>
+              )}
               {(artist.genres ?? []).slice(0, 2).map((g) => (
                 <Badge key={g} variant="secondary" className="mr-1 mt-1 text-[10px]">
                   {g}
